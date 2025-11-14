@@ -8,13 +8,13 @@ library(ggplot2)
 library(ggpubr)
 library(viridis)
 
-data <- read.csv('level-4_altered.csv')
+data <- read.csv('level-7_altered.csv')
 div <- data |> 
   rowwise() |>
-  mutate(richness = specnumber(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria`)),
-         shan     = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria`)),
-         simp     = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria`), "simpson"),
-         invsimp  = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria`), "inv")) |>
+  mutate(richness = specnumber(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__`)),
+         shan     = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__`)),
+         simp     = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__`), "simpson"),
+         invsimp  = diversity(c_across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__`), "inv")) |>
   ungroup()
 average_div <- div |> 
   group_by(Treatment, Time) |> 
@@ -29,7 +29,6 @@ run_tests <- function(df) {
 }
 tests_time0  <- run_tests(div0)
 tests_time60 <- run_tests(div60)
-
 results_time0 <- map_dfr(metrics,
                          ~ tidy(tests_time0[[.x]]),
                          .id = "metric") |>
@@ -59,7 +58,6 @@ star_positions <- plot_data |>
   summarise(y = max(Mean) * 1.05,   # slightly above tallest bar
             sig = unique(sig),
             .groups = "drop")
-
 div0proplot <- ggplot(subset(plot_data, time == 0), aes(x = metric, y = Mean, fill = Treatment)) +
   geom_col(position = position_dodge(width = 0.7)) +
   geom_text(data = subset(star_positions, time == 0),
@@ -82,52 +80,14 @@ div60proplot <- ggplot(subset(plot_data, time == 60), aes(x = metric, y = Mean, 
         axis.text.x = element_text(size = 10, angle = 45, hjust = 1))
 divproplot <- ggarrange(div0proplot, div60proplot, ncol = 2, common.legend = TRUE, legend = "right")
 divproplot <- annotate_figure(divproplot,
-                                top = text_grob("Diversity Metrics of Prokaryotes by Treatment and Time", face = "bold", size = 16, hjust = 0.5))
-
-
-#Other diversity metrics
-data_l = data |> 
-  pivot_longer(cols = 4:409, 
-               names_to = "Order", 
-               values_to = "NumberofASVs")
-gammaDiv = length(unique(data_l$Order))
-betaDiv = div |> 
-  group_by(Treatment, Time) |> 
-  summarise(alpha = mean(richness, na.rm = TRUE),
-            gamma = gammaDiv,
-            beta_a = gamma - alpha)
-a <- ggplot(betaDiv, aes(Time, alpha, color = Treatment))+
-  geom_point()+
-  geom_line()+
-  scale_y_continuous(limits = c(0,400))+
-  labs(x = 'Hour', y = expression(alpha ~ 'diversity'))+
-  theme_classic() +
-  scale_color_manual(values = c("W" = "darkslateblue",
-                                "WV" = "aquamarine3"))
-
-b <- ggplot(betaDiv, aes(Time, beta_a, color = Treatment))+
-  geom_point()+
-  geom_line()+
-  scale_y_continuous(limits = c(0,400))+
-  labs(x = 'Hour', y = expression(beta ~ 'diversity')) +
-  theme_classic() +
-  scale_color_manual(values = c("W" = "darkslateblue",
-                                "WV" = "aquamarine3"))
-
-alphabetaproplot <- ggarrange(a,b,nrow =1, common.legend = TRUE, legend = 'bottom', align = 'h')
-alphabetaproplot <- annotate_figure(alphabetaproplot,
-                                 top = text_grob("Alpha and Beta Diversity of Prokaryotes Over Time",
-                                                 face = "bold",
-                                                 size = 16,
-                                                 hjust = 0.5))
+                              top = text_grob("Diversity Metrics of Prokaryotes (Sp-Level) by Treatment and Time", face = "bold", size = 12, hjust = 0.5))
 
 #Dissimilarities
 pro_comm <- data |> 
   group_by(Treatment, Time) |> 
-  summarise(across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria`, mean)) |>
+  summarise(across(`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__`:`d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__`, mean)) |>
   unite("SampleID", Treatment, Time, sep = "_") |>  
   column_to_rownames(var = "SampleID")
-
 jacprodist <- vegdist(pro_comm, method = "jaccard")
 jacprodist
 pro.nmds.jc <- metaMDS(pro_comm, distance = "jaccard", k = 2, try = 100)
@@ -138,7 +98,7 @@ pro.nmds.bc = metaMDS(pro_comm, distance = "bray", k = 2, try = 100)
 
 pro_spp <- data |> 
   group_by(Treatment, Time) |> 
-  summarise(across(c(d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales:d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Gammaproteobacteria), mean))
+  summarise(across(c(d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio.__:d__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.__.__.__), mean))
 nmdspro_output <- bind_rows(bc = data.frame(pro.nmds.bc[["points"]]),jc = data.frame(pro.nmds.jc[["points"]])) |> 
   mutate(site = rep(unique(paste(pro_spp$Treatment, pro_spp$Time, sep = "_")), times = 2),
          Dissimilarity = rep(c("Bray", "Jaccard"), each = length(unique(paste(pro_spp$Treatment, pro_spp$Time, sep = "_")))))
@@ -157,32 +117,4 @@ nmdspro_jc_plot <- ggplot(nmdspro_jc, aes(MDS1, MDS2, color = as.factor(site))) 
   theme_classic(base_size = 14) +
   theme(plot.title = element_text(face = "italic", hjust = 0.5))
 nmds_pro <- ggarrange(nmdspro_bc_plot, nmdspro_jc_plot,ncol = 2,common.legend = TRUE,legend = "bottom")
-nmds_pro <- annotate_figure(nmds_pro,top = text_grob("NMDS of Prokaryote Communities", face = "bold", size = 16, hjust = 0.5))
-
-#Phylum level - Partitioning
-data.2 <- read.csv('level-2_altered.csv')
-data2_l <- data.2 |> 
-  pivot_longer(cols = 4:66, 
-               names_to = "Phylum", 
-               values_to = "NumberofASVs")
-pro_spp.2 <- data2_l |>
-  mutate(PA = if_else(`NumberofASVs` > 0, 1, 0),
-         TreatmentTime = paste(Treatment, Time, sep = "_")) |>
-  group_by(TreatmentTime, Phylum) |>
-  summarise(mean_count = mean(`NumberofASVs`, na.rm = TRUE),
-            mean_PA = mean(PA, na.rm = TRUE),
-            .groups = "drop")
-Cophylum_dist <- ggplot(pro_spp.2, aes(x = Phylum, y = TreatmentTime, fill = mean_count)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = 'mako',
-    trans = "log1p",
-    limits = c(1, 1000),
-    breaks = c(1, 10, 100, 1000),
-    labels = c("1", "10", "100", "1000"),
-    oob = squish) +
-  labs(y = 'Treatment & Time',
-    x = 'Phylum',
-    fill = 'Mean Number of ASVs',
-    title = 'Mean Abundance of Prokaryotic Taxonomic Groups with Treatment and Time') +
-  theme_classic() +
-  theme(axis.text.x = element_text(size = 4, angle = 90, vjust = 0.5, hjust = 1), plot.title = element_text(size = 8, face = "bold", hjust = 0.5))
+nmds_pro <- annotate_figure(nmds_pro,top = text_grob("NMDS of Prokaryote (Sp-Level) Communities", face = "bold", size = 16, hjust = 0.5))
