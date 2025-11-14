@@ -158,3 +158,31 @@ nmdspro_jc_plot <- ggplot(nmdspro_jc, aes(MDS1, MDS2, color = as.factor(site))) 
   theme(plot.title = element_text(face = "italic", hjust = 0.5))
 nmds_pro <- ggarrange(nmdspro_bc_plot, nmdspro_jc_plot,ncol = 2,common.legend = TRUE,legend = "bottom")
 nmds_pro <- annotate_figure(nmds_pro,top = text_grob("NMDS of Prokaryote Communities", face = "bold", size = 16, hjust = 0.5))
+
+#Phylum level - Partitioning
+data.2 <- read.csv('level-2_altered.csv')
+data2_l <- data.2 |> 
+  pivot_longer(cols = 4:66, 
+               names_to = "Phylum", 
+               values_to = "NumberofASVs")
+pro_spp.2 <- data2_l |>
+  mutate(PA = if_else(`NumberofASVs` > 0, 1, 0),
+         TreatmentTime = paste(Treatment, Time, sep = "_")) |>
+  group_by(TreatmentTime, Phylum) |>
+  summarise(mean_count = mean(`NumberofASVs`, na.rm = TRUE),
+            mean_PA = mean(PA, na.rm = TRUE),
+            .groups = "drop")
+Cophylum_dist <- ggplot(pro_spp.2, aes(x = Phylum, y = TreatmentTime, fill = mean_count)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = 'mako',
+    trans = "log1p",
+    limits = c(1, 1000),
+    breaks = c(1, 10, 100, 1000),
+    labels = c("1", "10", "100", "1000"),
+    oob = squish) +
+  labs(y = 'Treatment & Time',
+    x = 'Phylum',
+    fill = 'Mean Number of ASVs',
+    title = 'Mean Abundance of Prokaryotic Taxonomic Groups with Treatment and Time') +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 4, angle = 90, vjust = 0.5, hjust = 1), plot.title = element_text(size = 8, face = "bold", hjust = 0.5))
