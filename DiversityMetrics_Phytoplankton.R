@@ -2,6 +2,12 @@ library(tidyverse)
 library(tidyr)
 library(vegan)
 library(dplyr)
+library(broom)
+library(purrr)
+library(ggplot2)
+library(ggpubr)
+library(viridis)
+
 data <- read.csv('ChemTax_Results_altered.csv')
 div <- data |> 
   rowwise() |>
@@ -24,8 +30,6 @@ run_tests <- function(df) {
 tests_time0  <- run_tests(div0)
 tests_time60 <- run_tests(div60)
 
-library(broom)
-library(purrr)
 results_time0 <- map_dfr(metrics,
                          ~ tidy(tests_time0[[.x]]),
                          .id = "metric") |>
@@ -44,7 +48,6 @@ results_table <- results_table |>
     p.value < 0.01  ~ "**",
     p.value < 0.05  ~ "*"))
 
-library(ggplot2)
 plot_data <- results_table |>
   select(time, metric, estimate1, estimate2, sig) |>
   pivot_longer(cols = c(estimate1, estimate2),
@@ -95,8 +98,7 @@ betaDiv = div |>
   summarise(alpha = mean(richness, na.rm = TRUE),
             gamma = gammaDiv,
             beta_a = gamma - alpha)
-library(ggpubr)
-library(viridis)
+
 a <- ggplot(betaDiv, aes(Time, alpha, color = Treatment))+
   geom_point()+
   geom_line()+
@@ -128,7 +130,7 @@ phyto_comm <- data |>
   summarise(across(`All.Cyano`:`Dinoflagellates`, mean)) |>
   unite("SampleID", Treatment, Time, sep = "_") |>  
   column_to_rownames(var = "SampleID")
-library(vegan)
+
 jacphytodist <- vegdist(phyto_comm, method = "jaccard")
 jacphytodist
 phyto.nmds.jc <- metaMDS(phyto_comm, distance = "jaccard", k = 2, try = 100)
@@ -159,3 +161,21 @@ nmdsphyto_jc_plot <- ggplot(nmdsphyto_jc, aes(MDS1, MDS2, color = as.factor(site
   theme(plot.title = element_text(face = "italic", hjust = 0.5))
 nmds_phyto <- ggarrange(nmdsphyto_bc_plot, nmdsphyto_jc_plot,ncol = 2,common.legend = TRUE,legend = "bottom")
 nmds_phyto <- annotate_figure(nmds_phyto,top = text_grob("NMDS of Phytoplankton Communities", face = "bold", size = 16, hjust = 0.5))
+
+#Partitioning
+phyto_spp.2 <- data_l |>
+  mutate(PA = if_else(`Chl-Quantity` > 0, 1, 0),
+    TreatmentTime = paste(Treatment, Time, sep = "_")) |>
+  group_by(TreatmentTime, Taxonomy) |>
+  summarise(mean_count = mean(`Chl-Quantity`, na.rm = TRUE),
+    mean_PA = mean(PA, na.rm = TRUE),
+    .groups = "drop")
+phyto_spp.2 <- phyto_spp.2 |>
+  mutate(Taxonomy = recode(Taxonomy, "Diatoms...Haptos" = "Diatoms&Haptos"))
+Cophyto_dist <- ggplot(phyto_spp.2, aes(x = Taxonomy, y = TreatmentTime, fill = mean_count)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = 'mako', trans = "log1p") +
+  labs(y = 'Treatment & Time', x = 'Taxonomy', fill = 'Mean Chlorophyll Content', title = 'Mean Abundance of Taxonomic Groups with Treatment and Time') +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+  theme(plot.title = element_text(size = 11, face = "bold", hjust = 0.5))
