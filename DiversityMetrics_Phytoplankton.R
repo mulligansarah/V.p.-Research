@@ -1,7 +1,8 @@
 library(tidyverse)
 library(tidyr)
-data <- read.csv('ChemTax_Results_altered.csv')
 library(vegan)
+library(dplyr)
+data <- read.csv('ChemTax_Results_altered.csv')
 div <- data |> 
   rowwise() |>
   mutate(richness = specnumber(c_across(`All.Cyano`:`Dinoflagellates`)),
@@ -12,7 +13,6 @@ div <- data |>
 average_div <- div |> 
   group_by(Treatment, Time) |> 
   summarize(across(richness:invsimp, list(mean = mean, sd = sd)))
-library(dplyr)
 div0 <- filter(div, Time == 0)
 div60 <- filter(div, Time == 60)
 metrics <- c("richness", "shan", "simp", "invsimp")
