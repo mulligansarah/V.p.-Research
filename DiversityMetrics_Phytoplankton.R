@@ -162,6 +162,71 @@ nmdsphyto_jc_plot <- ggplot(nmdsphyto_jc, aes(MDS1, MDS2, color = as.factor(site
 nmds_phyto <- ggarrange(nmdsphyto_bc_plot, nmdsphyto_jc_plot,ncol = 2,common.legend = TRUE,legend = "bottom")
 nmds_phyto <- annotate_figure(nmds_phyto,top = text_grob("NMDS of Phytoplankton Communities", face = "bold", size = 16, hjust = 0.5))
 
+#Alt NMDS data
+phyto_comm <- data %>%
+  select(Treatment, Time, Sample, `All.Cyano`:`Dinoflagellates`)
+comm_matrix <- phyto_comm %>%
+  select(`All.Cyano`:`Dinoflagellates`) %>%
+  as.data.frame()
+
+set.seed(123)
+
+nmds_bc <- metaMDS(comm_matrix, distance = "bray", k = 2, trymax = 200)
+nmds_jc <- metaMDS(comm_matrix, distance = "jaccard", k = 2, trymax = 200)
+
+nmds_bc_df <- data.frame(nmds_bc$points) %>%
+  mutate(Treatment = phyto_comm$Treatment,
+         Hour = phyto_comm$Time,
+         Sample = phyto_comm$Sample,
+         Dissimilarity = "Bray–Curtis")
+
+nmds_jc_df <- data.frame(nmds_jc$points) %>%
+  mutate(Treatment = phyto_comm$Treatment,
+         Hour = phyto_comm$Time,
+         Sample = phyto_comm$Sample,
+         Dissimilarity = "Jaccard")
+
+nmds_all <- bind_rows(nmds_bc_df, nmds_jc_df)
+
+#Alt plot
+comm <- data |> 
+  select(All.Cyano:Dinoflagellates) |> 
+  as.data.frame()
+meta <- data |> select(Sample, Treatment, Time)
+
+nmds <- metaMDS(comm, distance = "bray", k = 2)
+
+scores_df <- as.data.frame(scores(nmds, display = "sites"))
+
+meta <- data |> select(Sample, Treatment, Time)
+scores_df <- cbind(scores_df, meta)
+
+ggplot(nmds_plot_df, aes(NMDS1, NMDS2, color = Treatment, shape = as.factor(Time))) +
+  geom_point(size = 3) +
+  stat_ellipse(aes(color = Treatment)) +
+  theme_classic()
+
+stress_df <- data.frame(
+  Dissimilarity = c("Bray–Curtis", "Jaccard"),
+  stress = c(nmds_bc$stress, nmds_jc$stress))
+
+ggplot(nmds_all, aes(MDS1, MDS2,
+                     color = Treatment,
+                     shape = as.factor(Hour))) +
+  geom_point(size = 3) +
+  facet_wrap(~ Dissimilarity) +
+  theme_classic() +
+  labs(shape = "Hour") +
+  geom_text(
+    data = stress_df,
+    aes(label = paste0("Stress = ", round(stress, 3))),
+    x = Inf, y = Inf,
+    hjust = 1.1, vjust = 1.3,
+    size = 4,
+    inherit.aes = FALSE 
+  ) +
+  stat_ellipse(aes(color = Treatment))
+
 #Partitioning
 phyto_spp.2 <- data_l |>
   mutate(PA = if_else(`Chl-Quantity` > 0, 1, 0),
@@ -178,4 +243,6 @@ Cophyto_dist <- ggplot(phyto_spp.2, aes(x = Taxonomy, y = TreatmentTime, fill = 
   labs(y = 'Treatment & Time', x = 'Taxonomy', fill = 'Mean Chlorophyll Content', title = 'Mean Abundance of Taxonomic Groups with Treatment and Time') +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  theme(plot.title = element_text(size = 11, face = "bold", hjust = 0.5))
+  theme(plot.title = element_text(size = 11, face = "bold", hjust = 0.5)) +
+  scale_fill_viridis_c(option = "cividis", trans = "log1p") +
+  geom_text(aes(label = round(mean_count, 1)), size = 2.5)
